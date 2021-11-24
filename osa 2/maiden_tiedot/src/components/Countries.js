@@ -1,8 +1,10 @@
 /* eslint-disable array-callback-return */
-import React from 'react'
-import Weather from './Weather'
+import CountryInfo from './CountryInfo'
+import React, { useState } from 'react';
 
 const Countries = (props) => {
+    const [Info, toggleInfo] = useState(false)
+    const [countryIndex, setCountryIndex] = useState(null)
 
     let results = []
     props.countriesList.map((x) => {
@@ -10,34 +12,34 @@ const Countries = (props) => {
             results.push(x)
         }})
 
-    const OneCountry = (props) => {
-        return (
-            <div>
-                <h2>{props.country.name}</h2>
-                <p>Capital {props.country.capital}</p>
-                <p>Population {props.country.population}</p>
-                <h3>Languages</h3>
-                <ul>
-                    {props.country.languages.map((x, i) => <li key={i}>{x.name}</li>)}
-                </ul>
-                <img src={props.country.flag} height="200dp" border="1px" alt="flag"></img>
-                <Weather city={props.country.capital}/>
-            </div>
-        )
-    }
-
     const TooMany = () => {
         return (
             <p>Too many matches, specify another filter</p>
         )
     }
 
+    const handleInfoButton = (prop) => {
+        setCountryIndex(prop)
+
+        if (prop === countryIndex) {
+            toggleInfo(!Info)
+        } else {
+            setCountryIndex(prop)
+            toggleInfo(true)
+        }
+
+    }
+
     const TenCountries = () => {
         return (
             <div>
                 <ul>
-                    {results.map((x, i)  => <li key={i}>{x.name}</li>)}
+                    {results.map((x, i)  => 
+                    <li key={i}>{x.name}
+                    <button onClick={() => handleInfoButton(x)}>show</button>
+                    </li>)}
                 </ul>
+                {Info && <CountryInfo country={countryIndex} />}
             </div>
         )
     }
@@ -45,8 +47,8 @@ const Countries = (props) => {
     return (
         <div>
             {results.length > 10 && <TooMany />}
-            {results.length < 10 && results.length > 1 && <TenCountries />}
-            {results.length === 1 && <OneCountry country={results[0]} />}
+            {results.length < 10 && results.length > 1 && <TenCountries/>}
+            {results.length === 1 && <CountryInfo country={results[0]} />}
             {results.length === 0 && <p>No results</p>}
         </div>
 

@@ -1,47 +1,23 @@
 /* eslint-disable array-callback-return */
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
-
-const Person = props => (
-  <p>{props.name} {props.number}</p>
-)
-
-const Filter = props => (
-  <div>
-    filter shown with <input onChange={props.onChange} value={props.value}></input>
-  </div>
-)
-
-const Personform = props => (
-  <div>
-    <form onSubmit={props.onSubmit}>
-        <div>
-          name: <input value={props.newName}
-          onChange={props.onNameChange}/>
-        </div>
-        <div>
-          number: <input value={props.newNumber}
-          onChange={props.onNumberChange}/>
-        </div>
-        <div>
-          <button type="submit">add</button>
-        </div>
-      </form>
-  </div>
-)
+import personService from "./services/persons"
+import './index.css';
+import Personform from './components/Personform';
+import Filter from './components/Filter'
+import ListPersons from './components/ListPersons';
+import Notification from './components/Notification';
 
 const App = () => {
   const [ persons, setPersons] = useState([]) 
   const [ newName, setNewName ] = useState("")
   const [ newNumber, setNewNumber ] = useState("")
   const [ filter, setFilter ] = useState("")
+  const [notification, setNotification] = useState(null)
 
   useEffect(() => {
-    console.log('effect')
-    axios
-      .get('http://localhost:3001/persons')
+    personService
+      .getAll()
       .then(response => {
-        console.log('promise fulfilled')
         setPersons(response.data)
       })
   }, [])
@@ -54,12 +30,46 @@ const App = () => {
     }
   
     if (persons.some(person => person.name === newName)) {
-      window.alert(`${newName} is already added to phonebook`)
+      if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+        const personToChange = persons.find(n => n.name === newName)
+        const changedPerson = { ...personToChange, number: newNumber }
+
+        personService
+        .update(personToChange.id, changedPerson)
+        .then(response => {
+        console.log(response)
+        setPersons(persons.map(person => person.id !== changedPerson.id ? person : response.data))
+        setNotification(
+          `${newName} number changed`
+        )
+        setTimeout(() => {
+          setNotification(null)
+        }, 5000)
+      })
+      .catch(error => {
+        setNotification(
+          `Information of ${nameObject.name} has already been removed from the server`
+        )
+        setTimeout(() => {
+          setNotification(null)
+        }, 5000)
+      })
+    }
     }
     else {
-      setPersons(persons.concat(nameObject))
-      setNewName('')
-      setNewNumber('')
+      personService
+        .create(nameObject)
+        .then(response => {
+          setPersons(persons.concat(response.data))
+          setNewName('')
+          setNewNumber('')
+          setNotification(
+            `Added ${newName}`
+          )
+          setTimeout(() => {
+            setNotification(null)
+          }, 5000)
+        })
     }
   }
 
@@ -75,27 +85,37 @@ const App = () => {
     setFilter(event.target.value)
   }
 
+  const handleDeleteButton = (person) => {
+    if (window.confirm(`Delete ${person.name} ?`)) {
+    const deletedPerson = persons.find(n => n.id === person.id)
+    personService
+      .deletePerson(person.id, deletedPerson)
+      .then(response => {
+        setPersons(persons.filter(p => p.id !== person.id))
+        setNotification(
+          `Deleted ${deletedPerson.name}`
+        )
+        setTimeout(() => {
+          setNotification(null)
+        }, 5000)
+      })
+      .catch(error => {
+        alert(
+          `${deletedPerson.name} was already removed from the server`
+        )
+      })
+    }
+  }
+
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={notification}/>
       <Filter onChange={handleFilterChange} value={filter}/>
       <h2>Add a new</h2>
       <Personform onSubmit={addName} onNameChange={handleNameChange} onNumberChange={handleNumberChange} name={newName} number={newNumber}/>
       <h2>Numbers</h2>
-      <div>
-      {persons
-        .filter(person => {
-          if (person.name.toLowerCase().includes(filter.toLowerCase())) {
-            return true
-          }
-        })
-        .map(item => (
-          <div>
-            <Person key={item.name} name={item.name} number={item.number}/>
-          </div>
-        ))
-      }
-      </div>
+      <ListPersons persons={persons} filter={filter} deleteName={handleDeleteButton} />
     </div>
   )
 }
